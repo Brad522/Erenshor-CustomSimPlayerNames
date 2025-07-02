@@ -1,9 +1,12 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace Erenshor_CustomSimPlayerNames
 {
@@ -11,7 +14,7 @@ namespace Erenshor_CustomSimPlayerNames
     public class CustomSimPlayerNames : BaseUnityPlugin
     {
         internal const string ModName = "CustomSimPlayerNames";
-        internal const string ModVersion = "1.0.0";
+        internal const string ModVersion = "1.0.1";
         internal const string ModDescription = "Custom SimPlayer Names";
         internal const string Author = "Brad522";
         private const string ModGUID = Author + "." + ModName;
@@ -81,14 +84,31 @@ namespace Erenshor_CustomSimPlayerNames
             {
                 var lines = File.ReadAllLines(filePath);
                 var names = new List<string>();
+
                 foreach (var line in lines)
                 {
                     string trimmed = line.Trim();
-                    if (!string.IsNullOrEmpty(trimmed))
+
+                    if (string.IsNullOrEmpty(trimmed))
+                        continue;
+
+                    string normalized = trimmed.Normalize(NormalizationForm.FormC);
+
+                    if (!IsValidName(normalized))
                     {
-                        names.Add(trimmed);
+                        Log.LogWarning($"[CustomSimPlayerNames] Invalid name skipped: {trimmed}");
+                        continue;
                     }
+
+                    if (names.Contains(normalized))
+                    {
+                        Log.LogWarning($"[CustomSimPlayerNames] Duplicate name skipped: {normalized}");
+                        continue;
+                    }
+
+                    names.Add(normalized);
                 }
+
                 Log.LogDebug($"[CustomSimPlayerNames] Loaded {names.Count} names from {filePath}");
                 return names;
             } catch (IOException ex)
@@ -96,6 +116,36 @@ namespace Erenshor_CustomSimPlayerNames
                 Log.LogError($"[CustomSimPlayerNames] Error reading name file: {ex.Message}");
                 return null;
             }
+        }
+
+        private static readonly HashSet<string> ReservedWindowsNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        };
+
+        private static bool IsValidName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
+            if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                return false;
+
+            if (name.EndsWith(" ") || name.EndsWith("."))
+                return false;
+
+            if (ReservedWindowsNames.Contains(name))
+                return false;
+
+            if (name.Length > 30)
+                return false;
+
+            if (name.Any(c => char.IsControl(c)))
+                return false;
+
+            return true;
         }
     }
 }
