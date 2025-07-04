@@ -19,4 +19,4 @@ There are two ".txt" files located in the mod folder
 Edit these files with the names you want to use for the SimPlayers. Each line should contain one name.
 The game will only use around 50 names from each file going from top to bottom.
 
-To see the names in game you need to reset the SimPlayer data using the reset button on the login screen of the game.
+Resetting SimPlayer Data is NOT needed.
